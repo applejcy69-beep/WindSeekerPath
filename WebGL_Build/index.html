@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>尋風拭途 — WindSeeker Path (Unity WebGL)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(circle at 50% 25%, #2a1a10 0%, #0d0806 80%);
+      color: #f5e6c8;
+      font-family: "Noto Serif TC", "Microsoft JhengHei", serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-container {
+      width: 100vw; height: 100vh; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-canvas {
+      width: 100%; height: 100%; display: block;
+      background: #0f0906;
+    }
+    #loading-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 35%, #2b190f 0%, #0d0705 85%);
+      z-index: 10; transition: opacity 0.4s ease;
+    }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    h1 { font-size: 2.6rem; color: #f5d999; letter-spacing: 0.25em; margin-bottom: 8px; }
+    .subtitle { font-size: 0.95rem; color: #c9a66b; margin-bottom: 28px; }
+    .progress-track {
+      width: 380px; height: 14px; border-radius: 7px;
+      border: 1px solid #b58442; background: rgba(15, 9, 6, 0.9); overflow: hidden;
+    }
+    #progress-fill {
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #ca8a04, #fde047, #4fe3c1);
+      transition: width 0.15s ease;
+    }
+    #progress-text { margin-top: 10px; font-size: 0.9rem; color: #e8d5b2; }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loading-overlay">
+      <h1>尋風拭途</h1>
+      <div class="subtitle">Unity 6 WebGL 桌機版｜原生 Unity MPS SDK 多人共鬥</div>
+      <div class="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-text">正在載入荒漠遺跡資源... 0%</div>
+    </div>
+  </div>
+  <script src="Build/WebGL_Build.loader.js"></script>
+  <script>
+    const canvas = document.querySelector("#unity-canvas");
+    const fill = document.querySelector("#progress-fill");
+    const label = document.querySelector("#progress-text");
+    const overlay = document.querySelector("#loading-overlay");
+
+    const config = {
+      dataUrl: "Build/WebGL_Build.data.unityweb",
+      frameworkUrl: "Build/WebGL_Build.framework.js.unityweb",
+      codeUrl: "Build/WebGL_Build.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "WindSeekerStudio",
+      productName: "WindSeeker Path",
+      productVersion: "1.0.0"
+    };
+
+    createUnityInstance(canvas, config, (progress) => {
+      const pct = Math.round(progress * 100);
+      fill.style.width = pct + "%";
+      label.textContent = "正在載入荒漠遺跡資源... " + pct + "%";
+    }).then((unityInstance) => {
+      overlay.classList.add("hidden");
+      window.unityInstance = unityInstance;
+    }).catch((err) => {
+      label.textContent = "載入失敗：" + err;
+      label.style.color = "#f87171";
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
