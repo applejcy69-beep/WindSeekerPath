@@ -1,0 +1,4 @@
+{
+  "googleClientId": "",
+  "note": "請至 Google Cloud Console 建立 OAuth 2.0 網頁用戶端 ID 後，將 Client ID 貼入上方 googleClientId 欄位，即可於 GitHub Pages 啟用正式 Google 帳號登入與 Google Drive 雲端存檔同步（免重新編譯 Unity）。詳細步驟請見 DEPLOYMENT_AND_UGS_GUIDE.md。"
+}

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>尋風拭途 — WindSeeker Path (Unity WebGL)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(circle at 50% 25%, #2a1a10 0%, #0d0806 80%);
+      color: #f5e6c8;
+      font-family: "Noto Serif TC", "Microsoft JhengHei", serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-container {
+      width: 100vw; height: 100vh; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-canvas {
+      width: 100%; height: 100%; display: block;
+      background: #0f0906;
+    }
+    #loading-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 35%, #2b190f 0%, #0d0705 85%);
+      z-index: 10; transition: opacity 0.4s ease;
+    }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    h1 { font-size: 2.6rem; color: #f5d999; letter-spacing: 0.25em; margin-bottom: 8px; }
+    .subtitle { font-size: 0.95rem; color: #c9a66b; margin-bottom: 28px; }
+    .progress-track {
+      width: 380px; height: 14px; border-radius: 7px;
+      border: 1px solid #b58442; background: rgba(15, 9, 6, 0.9); overflow: hidden;
+    }
+    #progress-fill {
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #ca8a04, #fde047, #4fe3c1);
+      transition: width 0.15s ease;
+    }
+    #progress-text { margin-top: 10px; font-size: 0.9rem; color: #e8d5b2; }
+    #google-auth-gate {
+      position: fixed; inset: 0; z-index: 999;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(4px);
+      font-family: "Roboto", "Microsoft JhengHei", sans-serif;
+    }
+    #google-auth-gate.visible { display: flex; }
+    .g-card {
+      width: 440px; max-width: 92vw; padding: 30px 32px;
+      border-radius: 22px; background: #0e0e0f; color: #e3e3e3;
+      border: 1px solid #3c4043; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+    }
+    .g-card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .g-card h2 { font-size: 1.45rem; font-weight: 500; color: #f8f9fa; }
+    .g-card p { font-size: 0.92rem; line-height: 1.6; color: #bdc1c6; margin-bottom: 22px; }
+    .g-card-actions { display: flex; justify-content: flex-end; gap: 12px; }
+    .g-btn-cancel {
+      padding: 10px 20px; border-radius: 999px; border: 1px solid #5f6368;
+      background: transparent; color: #e3e3e3; font-size: 0.92rem; cursor: pointer;
+    }
+    .g-btn-cancel:hover { background: rgba(255, 255, 255, 0.08); }
+    .g-btn-primary {
+      padding: 10px 22px; border-radius: 999px; border: none;
+      background: #a8c7fa; color: #062e6f; font-size: 0.94rem; font-weight: 600; cursor: pointer;
+    }
+    .g-btn-primary:hover { background: #c2d7fa; }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loading-overlay">
+      <h1>尋風拭途</h1>
+      <div class="subtitle">Unity 6 WebGL 桌機版｜原生 Unity MPS SDK 多人共鬥</div>
+      <div class="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-text">正在載入荒漠遺跡資源... 0%</div>
+    </div>
+    <div id="google-auth-gate" role="dialog" aria-modal="true">
+      <div class="g-card">
+        <div class="g-card-header">
+          <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <h2 id="g-gate-title">使用 Google 帳戶登入</h2>
+        </div>
+        <p id="g-gate-desc">點擊下方按鈕即可開啟 Google 官方登入認證視窗（accounts.google.com），完成驗證後將自動同步《尋風拭途》雲端存檔與圖鑑紀錄。</p>
+        <div class="g-card-actions">
+          <button type="button" class="g-btn-cancel" id="g-gate-cancel">取消</button>
+          <button type="button" class="g-btn-primary" id="g-gate-launch">前往 Google 官方認證</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    (function () {
+      const SAVE_FILE_NAME = "windseeker_save.json";
+      const CLIENT_ID_STORAGE_KEY = "ws_google_oauth_client_id_v1";
+      let unityGoName = "CloudAccountSaveManager";
+      let googleClientId = "";
+      let accessToken = "";
+      let driveFileId = "";
+      let tokenClient = null;
+      let tokenClientForId = "";
+      let configLoaded = false;
+
+      const gateEl = document.getElementById("google-auth-gate");
+      const gateTitle = document.getElementById("g-gate-title");
+      const gateCancel = document.getElementById("g-gate-cancel");
+      const gateLaunch = document.getElementById("g-gate-launch");
+
+      function isValidClientId(id) {
+        return typeof id === "string" && id.trim().length > 15 && !id.trim().startsWith("YOUR_") && id.indexOf(".apps.googleusercontent.com") > 0;
+      }
+
+      function sendToUnity(method, payload) {
+        if (window.unityInstance && window.unityInstance.SendMessage) {
+          try {
+            window.unityInstance.SendMessage(unityGoName, method, payload == null ? "" : String(payload));
+          } catch (e) {
+            console.warn("[WindSeekerGoogleAuth] SendMessage failed:", method, e);
+          }
+        }
+      }
+
+      function hideAuthGate() {
+        if (gateEl) gateEl.classList.remove("visible");
+      }
+
+      function showAuthGate(isSwitch) {
+        if (!gateEl) return;
+        if (gateTitle) gateTitle.textContent = isSwitch ? "切換 Google 帳戶" : "使用 Google 帳戶登入";
+        gateEl.classList.add("visible");
+      }
+
+      function ensureTokenClient() {
+        if (!(window.google && window.google.accounts && window.google.accounts.oauth2)) return null;
+        if (tokenClient && tokenClientForId === googleClientId) return tokenClient;
+        tokenClientForId = googleClientId;
+        tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: "openid profile email https://www.googleapis.com/auth/drive.appdata",
+          callback: async function (resp) {
+            hideAuthGate();
+            if (resp.error) {
+              sendToUnity("OnGoogleAuthError", "Google 登入已取消或失敗：" + resp.error);
+              return;
+            }
+            accessToken = resp.access_token;
+            driveFileId = "";
+            try {
+              const profile = await fetchUserInfo(accessToken);
+              sendToUnity("OnGoogleAuthSuccess", JSON.stringify({
+                sub: profile.sub || "",
+                name: profile.name || profile.email || "Google 旅人",
+                email: profile.email || ""
+              }));
+              await downloadSave();
+            } catch (e) {
+              sendToUnity("OnGoogleAuthError", e.message || String(e));
+            }
+          },
+          error_callback: function (err) {
+            if (err && err.type === "popup_failed_to_open") {
+              showAuthGate(false);
+            } else if (err && err.type === "popup_closed") {
+              hideAuthGate();
+              sendToUnity("OnGoogleAuthError", "已取消 Google 官方登入");
+            } else {
+              hideAuthGate();
+              sendToUnity("OnGoogleAuthError", "Google 認證視窗錯誤：" + (err && err.type ? err.type : "unknown"));
+            }
+          }
+        });
+        return tokenClient;
+      }
+
+      if (gateCancel) {
+        gateCancel.addEventListener("click", function () {
+          hideAuthGate();
+          sendToUnity("OnGoogleAuthError", "已取消 Google 官方登入");
+        });
+      }
+      if (gateLaunch) {
+        gateLaunch.addEventListener("click", function () {
+          const client = ensureTokenClient();
+          if (!client) {
+            hideAuthGate();
+            sendToUnity("OnGoogleAuthError", "Google 官方登入元件尚未載入，請檢查網路連線後重試");
+            return;
+          }
+          hideAuthGate();
+          try {
+            client.requestAccessToken({ prompt: "select_account" });
+          } catch (e) {
+            sendToUnity("OnGoogleAuthError", e.message || String(e));
+          }
+        });
+      }
+
+      async function loadConfig() {
+        let fromFile = "";
+        try {
+          const resp = await fetch("StreamingAssets/google_auth_config.json?t=" + Date.now(), { cache: "no-store" });
+          if (resp.ok) {
+            const cfg = await resp.json();
+            fromFile = (cfg && cfg.googleClientId ? String(cfg.googleClientId).trim() : "");
+          }
+        } catch (e) {
+          console.warn("[WindSeekerGoogleAuth] Config read skipped:", e);
+        }
+        let fromLocal = "";
+        try { fromLocal = (localStorage.getItem(CLIENT_ID_STORAGE_KEY) || "").trim(); } catch (e) {}
+        googleClientId = isValidClientId(fromFile) ? fromFile : (isValidClientId(fromLocal) ? fromLocal : "");
+        configLoaded = true;
+        sendToUnity("OnGoogleConfigLoaded", isValidClientId(googleClientId) ? ("1|" + googleClientId) : "0");
+      }
+
+      // Eagerly preload Client ID before Unity starts so clicks never lose browser user-gesture context!
+      loadConfig();
+
+      async function fetchUserInfo(token) {
+        const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: "Bearer " + token }
+        });
+        if (!resp.ok) throw new Error("無法取得 Google 帳號資料 (HTTP " + resp.status + ")");
+        return await resp.json();
+      }
+
+      async function findDriveSaveFile() {
+        const url = "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder"
+          + "&q=" + encodeURIComponent("name='" + SAVE_FILE_NAME + "' and trashed=false")
+          + "&fields=files(id,modifiedTime)&pageSize=1";
+        const resp = await fetch(url, {
+          headers: { Authorization: "Bearer " + accessToken }
+        });
+        if (!resp.ok) throw new Error("查詢雲端存檔失敗 (HTTP " + resp.status + ")");
+        const data = await resp.json();
+        return (data.files && data.files.length > 0) ? data.files[0].id : "";
+      }
+
+      async function downloadSave() {
+        if (!accessToken) {
+          sendToUnity("OnGoogleAuthError", "尚未取得 Google 存取權杖");
+          return;
+        }
+        try {
+          driveFileId = await findDriveSaveFile();
+          if (!driveFileId) {
+            sendToUnity("OnGoogleCloudDataLoaded", "");
+            return;
+          }
+          const resp = await fetch("https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(driveFileId) + "?alt=media", {
+            headers: { Authorization: "Bearer " + accessToken }
+          });
+          if (!resp.ok) throw new Error("下載雲端存檔失敗 (HTTP " + resp.status + ")");
+          const text = await resp.text();
+          sendToUnity("OnGoogleCloudDataLoaded", text);
+        } catch (err) {
+          console.error("[WindSeekerGoogleAuth] downloadSave error:", err);
+          sendToUnity("OnGoogleAuthError", err.message || String(err));
+        }
+      }
+
+      async function uploadSave(jsonStr) {
+        if (!accessToken) return;
+        try {
+          if (!driveFileId) {
+            driveFileId = await findDriveSaveFile();
+          }
+          const boundary = "windseeker_boundary_" + Date.now();
+          const metadata = driveFileId
+            ? { name: SAVE_FILE_NAME, mimeType: "application/json" }
+            : { name: SAVE_FILE_NAME, parents: ["appDataFolder"], mimeType: "application/json" };
+          const body = "--" + boundary + "\r\n"
+            + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            + JSON.stringify(metadata) + "\r\n"
+            + "--" + boundary + "\r\n"
+            + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            + jsonStr + "\r\n"
+            + "--" + boundary + "--";
+
+          const endpoint = driveFileId
+            ? "https://www.googleapis.com/upload/drive/v3/files/" + encodeURIComponent(driveFileId) + "?uploadType=multipart"
+            : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+          const resp = await fetch(endpoint, {
+            method: driveFileId ? "PATCH" : "POST",
+            headers: {
+              Authorization: "Bearer " + accessToken,
+              "Content-Type": "multipart/related; boundary=" + boundary
+            },
+            body: body
+          });
+          if (!resp.ok) throw new Error("上傳雲端存檔失敗 (HTTP " + resp.status + ")");
+          const resJson = await resp.json();
+          if (resJson && resJson.id) driveFileId = resJson.id;
+          sendToUnity("OnGoogleCloudUploadDone", "OK");
+        } catch (err) {
+          console.error("[WindSeekerGoogleAuth] uploadSave error:", err);
+          sendToUnity("OnGoogleAuthError", err.message || String(err));
+        }
+      }
+
+      function launchOfficialSignIn(isSwitch) {
+        if (!isValidClientId(googleClientId)) {
+          sendToUnity("OnGoogleConfigMissing", "尚未設定 Google OAuth 2.0 Web Client ID");
+          return;
+        }
+        const client = ensureTokenClient();
+        if (!client) {
+          sendToUnity("OnGoogleAuthError", "Google 官方登入元件尚未載入完成，請確認網路連線後重試");
+          return;
+        }
+        try {
+          // Synchronous call to preserve browser user gesture; if blocked by Unity canvas RAF, error_callback shows 1-click native button!
+          client.requestAccessToken({ prompt: "select_account" });
+        } catch (e) {
+          showAuthGate(isSwitch);
+        }
+      }
+
+      window.WindSeekerGoogleAuth = {
+        init: function (goName) {
+          if (goName) unityGoName = goName;
+          if (configLoaded) {
+            sendToUnity("OnGoogleConfigLoaded", isValidClientId(googleClientId) ? ("1|" + googleClientId) : "0");
+          } else {
+            loadConfig();
+          }
+        },
+        setClientId: function (cid) {
+          const clean = (cid || "").trim();
+          googleClientId = isValidClientId(clean) ? clean : "";
+          tokenClient = null;
+          tokenClientForId = "";
+          try {
+            if (googleClientId) localStorage.setItem(CLIENT_ID_STORAGE_KEY, googleClientId);
+            else localStorage.removeItem(CLIENT_ID_STORAGE_KEY);
+          } catch (e) {}
+          sendToUnity("OnGoogleConfigLoaded", isValidClientId(googleClientId) ? ("1|" + googleClientId) : "0");
+        },
+        signIn: function (isSwitch) {
+          launchOfficialSignIn(!!isSwitch);
+        },
+        switchAccount: function () {
+          launchOfficialSignIn(true);
+        },
+        signOut: function () {
+          hideAuthGate();
+          if (accessToken && window.google && window.google.accounts && window.google.accounts.oauth2) {
+            try { window.google.accounts.oauth2.revoke(accessToken, function () {}); } catch (e) {}
+          }
+          accessToken = "";
+          driveFileId = "";
+          sendToUnity("OnGoogleSignedOut", "OK");
+        },
+        uploadSave: uploadSave,
+        downloadSave: downloadSave
+      };
+    })();
+  </script>
+  <script src="Build/WebGL_Build.loader.js"></script>
+  <script>
+    const canvas = document.querySelector("#unity-canvas");
+    const fill = document.querySelector("#progress-fill");
+    const label = document.querySelector("#progress-text");
+    const overlay = document.querySelector("#loading-overlay");
+
+    const config = {
+      dataUrl: "Build/WebGL_Build.data.unityweb",
+      frameworkUrl: "Build/WebGL_Build.framework.js.unityweb",
+      codeUrl: "Build/WebGL_Build.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "WindSeekerStudio",
+      productName: "WindSeeker Path",
+      productVersion: "1.0.0"
+    };
+
+    createUnityInstance(canvas, config, (progress) => {
+      const pct = Math.round(progress * 100);
+      fill.style.width = pct + "%";
+      label.textContent = "正在載入荒漠遺跡資源... " + pct + "%";
+    }).then((unityInstance) => {
+      overlay.classList.add("hidden");
+      window.unityInstance = unityInstance;
+    }).catch((err) => {
+      label.textContent = "載入失敗：" + err;
+      label.style.color = "#f87171";
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

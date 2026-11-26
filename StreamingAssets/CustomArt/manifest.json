@@ -1,0 +1,25 @@
+{
+  "_comment": "將自訂 PNG 圖檔放入對應子資料夾，並把相對路徑加進 enabledSlots 陣列（例如 \"ui/title_logo.png\"），免重編譯 Unity 即可直接在網頁上替換美術圖檔！",
+  "availableSlots": [
+    "ui/title_logo.png",
+    "ui/title_backdrop.png",
+    "ui/map_backdrop.png",
+    "ui/victory_emblem.png",
+    "ui/boss_emblem.png",
+    "weapons/wind_blade.png",
+    "weapons/sand_hammer.png",
+    "weapons/dune_bow.png",
+    "weapons/twin_sickles.png",
+    "weapons/sand_shotgun.png",
+    "weapons/wind_wraps.png",
+    "weapons/pocket_watch.png",
+    "map_nodes/normal.png",
+    "map_nodes/elite.png",
+    "map_nodes/reward.png",
+    "map_nodes/shop.png",
+    "map_nodes/event.png",
+    "map_nodes/jester.png",
+    "map_nodes/act_boss.png"
+  ],
+  "enabledSlots": []
+}
